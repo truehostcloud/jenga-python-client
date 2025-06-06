@@ -1,0 +1,1618 @@
+openapi: 3.1.0
+info:
+  title: Jenga API
+  description: API for Jenga payment processing and transaction management
+  version: 3.0.0
+servers:
+  - url: https://api.finserve.africa
+    description: Production environment
+  - url: https://uat.finserve.africa
+    description: Sandbox/UAT environment
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Api-Key
+      description: API key for authentication
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: JWT token for authenticated requests
+    SignatureAuth:
+      type: apiKey
+      in: header
+      name: Signature
+      description: Base64 encoded RSA signature of the request payload
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Authentication failed"
+
+    AuthenticationRequest:
+      type: object
+      required:
+        - merchantCode
+        - consumerSecret
+      properties:
+        merchantCode:
+          type: string
+          description: Merchant code for authentication
+          example: "123456"
+        consumerSecret:
+          type: string
+          description: Consumer secret for authentication
+          example: "secret123"
+
+    AuthenticationResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expiresIn:
+          type: string
+          format: date-time
+          description: Token expiration timestamp
+          example: "2024-03-20T10:00:00Z"
+        issuedAt:
+          type: string
+          format: date-time
+          description: When the token was issued
+          example: "2024-03-20T09:00:00Z"
+        tokenType:
+          type: string
+          description: Type of token
+          example: "Bearer"
+        refreshToken:
+          type: string
+          description: Token used to refresh the access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    MPesaTransactionStatus:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Indicates if the request was successful
+          example: true
+        code:
+          type: string
+          description: Response code indicating status
+          example: "0"
+        message:
+          type: string
+          description: Description of the response status
+          example: "Order found"
+        data:
+          type: object
+          properties:
+            order:
+              type: object
+              properties:
+                orderAmount:
+                  type: number
+                  description: Request amount
+                  example: 2.0
+                amountPaid:
+                  type: number
+                  description: Amount paid by customer including service charge
+                  example: 2.0
+                orderReference:
+                  type: string
+                  description: Order Reference
+                  example: "OR28922980077"
+                orderStatus:
+                  type: string
+                  description: Status of an order (Paid, Pending)
+                  example: "Paid"
+                createdOn:
+                  type: number
+                  description: Creation date of the order in EPOC time
+                  example: 1723209757300
+            invoices:
+              type: array
+              items:
+                type: object
+                properties:
+                  amount:
+                    type: number
+                    description: Invoice Amount
+                    example: 100.0
+                  amountDebited:
+                    type: number
+                    description: Amount paid by the customer
+                    example: 100.0
+                  charge:
+                    type: number
+                    description: Service charge
+                    example: 0.0
+                  invoiceStatus:
+                    type: string
+                    description: Status of invoice (Pending, Paid, Cancelled, Expired)
+                    example: "Expired"
+                  orderReference:
+                    type: string
+                    description: Order Reference
+                    example: "ORD1748939052F6DD4B"
+                  externalReference:
+                    type: string
+                    nullable: true
+                    description: Mpesa Reference
+                    example: null
+                  createdOn:
+                    type: string
+                    description: Date invoice was generated
+                    example: "2025-06-03 11:26:22.347"
+                  completedOn:
+                    type: string
+                    nullable: true
+                    description: Date Payment was completed
+                    example: null
+
+    BillPaymentRequest:
+      type: object
+      required:
+        - biller
+        - bill
+        - payer
+        - partnerId
+      properties:
+        biller:
+          type: object
+          required:
+            - billerCode
+            - countryCode
+          properties:
+            billerCode:
+              type: string
+              description: The unique code for the biller
+              example: "320320"
+            countryCode:
+              type: string
+              description: The country code of the biller
+              example: "KE"
+        bill:
+          type: object
+          required:
+            - reference
+            - amount
+            - currency
+          properties:
+            reference:
+              type: string
+              description: The reference number for the bill
+              example: "10170476767676"
+            amount:
+              type: string
+              description: The amount to be paid
+              example: "111.00"
+            currency:
+              type: string
+              description: The currency for the payment
+              example: "KES"
+        payer:
+          type: object
+          required:
+            - name
+            - account
+            - reference
+            - mobileNumber
+          properties:
+            name:
+              type: string
+              description: The name of the person making the payment
+              example: "A. N Other"
+            account:
+              type: string
+              description: The account number for the payer
+              example: "101704"
+            reference:
+              type: string
+              description: The reference number for the payer's transaction
+              example: "123451000002"
+            mobileNumber:
+              type: string
+              description: The mobile number of the payer
+              example: "0764555320"
+        partnerId:
+          type: string
+          description: The ID of the partner initiating the payment
+          example: "0020100014605"
+        remarks:
+          type: string
+          description: Additional remarks about the payment
+          example: "These are just some remarks"
+
+    BillPaymentResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Overall status of the response
+          example: true
+        code:
+          type: integer
+          description: Response code
+          example: 0
+        message:
+          type: string
+          description: Response message
+          example: "success"
+        reference:
+          type: string
+          description: Bill reference number
+          example: "10170476767676"
+        data:
+          type: object
+          properties:
+            transactionId:
+              type: string
+              description: Payment transaction ID (returned only if payment is successful)
+              example: "123451000002"
+            status:
+              type: string
+              description: Bill processing status
+              example: "SUCCESS"
+
+    BillValidationRequest:
+      type: object
+      required:
+        - billerCode
+        - customerRefNumber
+        - amount
+        - amountCurrency
+      properties:
+        billerCode:
+          type: string
+          description: The code for the biller. This is provided by the service provider.
+          example: "320320"
+        customerRefNumber:
+          type: string
+          description: The reference number for the customer's bill.
+          example: "28055948"
+        amount:
+          type: string
+          description: The amount to be validated.
+          example: "1000.00"
+        amountCurrency:
+          type: string
+          description: The currency of the amount (e.g., KES, USD).
+          example: "KES"
+
+    BillValidationResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Response status
+          example: true
+        code:
+          type: integer
+          description: Response code
+          example: 0
+        message:
+          type: string
+          description: Response message
+          example: "success"
+        data:
+          type: object
+          properties:
+            amount:
+              type: string
+              description: Bill amount
+              example: "1000.0"
+            customerRefNumber:
+              type: string
+              description: Bill identifier
+              example: "101704"
+            name:
+              type: string
+              description: Bill name
+              example: "John Doe"
+            billStatus:
+              type: string
+              description: Bill status
+              example: "true"
+            message:
+              type: string
+              description: Bill query response message
+              example: "SUCCESS"
+            createdOn:
+              type: string
+              description: Bill create date on third party system
+              example: "Fri Jun 24 11:04:14 EAT 2022"
+            amountCurrency:
+              type: string
+              description: Bill amount currency
+              example: "KES"
+            status:
+              type: boolean
+              description: Bill status
+              example: true
+
+    EquitelPushRequest:
+      type: object
+      required:
+        - merchant
+        - payment
+      properties:
+        merchant:
+          type: object
+          required:
+            - countryCode
+            - accountNumber
+            - name
+          properties:
+            countryCode:
+              type: string
+              description: Merchant country code
+              example: "KE"
+            accountNumber:
+              type: string
+              description: Account number to be credited on payment completion
+              example: "0170194290581"
+            name:
+              type: string
+              description: Merchant name
+              example: "Sportify Ltd"
+        payment:
+          type: object
+          required:
+            - ref
+            - mobileNumber
+            - telco
+            - amount
+            - date
+            - callBackUrl
+            - pushType
+          properties:
+            ref:
+              type: string
+              description: Payment Reference (6-12 alphanumeric characters)
+              example: "MPS3883889822982"
+            mobileNumber:
+              type: string
+              description: Payer's mobile number with country code prefix
+              example: "254764555291"
+            telco:
+              type: string
+              description: Payer's telco
+              example: "Equitel"
+            amount:
+              type: string
+              description: Transaction amount (up to 2 decimal places)
+              example: "5.00"
+            date:
+              type: string
+              format: date
+              description: Transaction date in YYYY-MM-DD format
+              example: "2024-08-13"
+            callBackUrl:
+              type: string
+              format: uri
+              description: Callback URL for transaction status notifications
+              example: "https://webhook.site/6173e296-a2b0-4fb5-a06e-bfbb2e352e30"
+            pushType:
+              type: string
+              enum: [STK, USSD]
+              description: Type of push notification
+              example: "STK"
+
+    EquitelPushResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Overall status of the response
+          example: true
+        code:
+          type: integer
+          description: Response code
+          example: -1
+        message:
+          type: string
+          description: Response message
+          example: "Transaction has been successfully acknowledged, await final transaction status on callback"
+        reference:
+          type: string
+          description: Payment reference number
+          example: "MPS3883889822982"
+        transactionId:
+          type: string
+          description: Transaction ID
+          example: "MPS3883889822982"
+
+    EquitelCallbackResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Transaction status
+          example: true
+        code:
+          type: integer
+          description: Status code
+          example: 3
+          enum: [0, 1, 2, 3, 4, 5, 6, 7]
+        message:
+          type: string
+          description: Status message
+          example: "Successful"
+        transactionReference:
+          type: string
+          description: Transaction reference number
+          example: "MPS3883889822982"
+        telcoReference:
+          type: string
+          description: Telco reference number
+          example: "MPS3883889822982"
+        mobileNumber:
+          type: string
+          description: Payer's mobile number
+          example: "254764555291"
+        debitedAmount:
+          type: number
+          description: Amount debited from payer
+          example: 5
+        requestAmount:
+          type: number
+          description: Original requested amount
+          example: 5
+        charge:
+          type: number
+          description: Service charge
+          example: 1
+        currency:
+          type: string
+          description: Transaction currency
+          example: "KES"
+        telco:
+          type: string
+          description: Telco provider
+          example: "Equitel"
+
+    MPesaStkPushRequest:
+      type: object
+      required:
+        - order
+        - customer
+        - payment
+      properties:
+        order:
+          type: object
+          required:
+            - orderReference
+            - orderAmount
+            - orderCurrency
+            - source
+            - countryCode
+            - description
+          properties:
+            orderReference:
+              type: string
+              description: Order reference, should be unique per order
+              example: "OR28922980077"
+            orderAmount:
+              type: number
+              description: Original order amount
+              example: 2
+            orderCurrency:
+              type: string
+              description: Currency of the order
+              example: "KES"
+            source:
+              type: string
+              description: Source of the order
+              example: "APICHECKOUT"
+            countryCode:
+              type: string
+              description: Source country code (alpha-2)
+              example: "KE"
+            description:
+              type: string
+              description: Description of the order
+              example: "Purchase"
+        customer:
+          type: object
+          required:
+            - name
+            - email
+            - phoneNumber
+            - identityNumber
+          properties:
+            name:
+              type: string
+              description: Customer's name
+              example: "John Doe"
+            email:
+              type: string
+              format: email
+              description: Customer's email
+              example: "xyx2@gmail.com"
+            phoneNumber:
+              type: string
+              description: Customer's phone number
+              example: "0722000111"
+            identityNumber:
+              type: string
+              description: Customer's identity number
+              example: "0000000"
+            firstAddress:
+              type: string
+              description: Customer's first address
+              example: ""
+            secondAddress:
+              type: string
+              description: Customer's second address
+              example: ""
+        payment:
+          type: object
+          required:
+            - paymentReference
+            - paymentCurrency
+            - channel
+            - service
+            - provider
+            - callbackUrl
+            - details
+          properties:
+            paymentReference:
+              type: string
+              description: Payment reference, should be unique per request
+              example: "MKQR28922980073"
+            paymentCurrency:
+              type: string
+              description: Currency of the payment
+              example: "KES"
+            channel:
+              type: string
+              description: Channel of the payment
+              example: "MOBILE"
+            service:
+              type: string
+              description: Payment service
+              example: "MPESA"
+            provider:
+              type: string
+              description: Payment provider
+              example: "JENGA"
+            callbackUrl:
+              type: string
+              format: uri
+              description: Callback URL for transaction status
+              example: "https://webhook.site/5c74a733-1caa-4f10-b876-3df9c0d7453c"
+            details:
+              type: object
+              required:
+                - msisdn
+                - paymentAmount
+              properties:
+                msisdn:
+                  type: string
+                  description: Number to push the STK
+                  example: "0722000000"
+                paymentAmount:
+                  type: number
+                  description: Amount to pay on the request
+                  example: 2
+
+    MPesaStkPushResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Response status
+          example: true
+        code:
+          type: string
+          description: Response code
+          example: "0"
+        message:
+          type: string
+          description: Response message
+          example: "Order found"
+        data:
+          type: object
+          properties:
+            order:
+              type: object
+              properties:
+                orderAmount:
+                  type: number
+                  description: Request amount
+                  example: 100.0
+                amountPaid:
+                  type: number
+                  description: Amount paid by customer including service charge
+                  example: 0.0
+                orderReference:
+                  type: string
+                  description: Order Reference
+                  example: "ORD1748939052F6DD4B"
+                orderStatus:
+                  type: string
+                  description: Status of an order (Paid, Pending, Expired)
+                  example: "Expired"
+                createdOn:
+                  type: number
+                  description: Creation date of the order in EPOC time
+                  example: 1748939182287
+            invoices:
+              type: array
+              items:
+                type: object
+                properties:
+                  amount:
+                    type: number
+                    description: Invoice Amount
+                    example: 100.0
+                  amountDebited:
+                    type: number
+                    description: Amount paid by the customer
+                    example: 100.0
+                  charge:
+                    type: number
+                    description: Service charge
+                    example: 0.0
+                  invoiceStatus:
+                    type: string
+                    description: Status of invoice (Pending, Paid, Cancelled, Expired)
+                    example: "Expired"
+                  orderReference:
+                    type: string
+                    description: Order Reference
+                    example: "ORD1748939052F6DD4B"
+                  externalReference:
+                    type: string
+                    nullable: true
+                    description: Mpesa Reference
+                    example: null
+                  createdOn:
+                    type: string
+                    description: Date invoice was generated
+                    example: "2025-06-03 11:26:22.347"
+                  completedOn:
+                    type: string
+                    nullable: true
+                    description: Date Payment was completed
+                    example: null
+
+    MPesaCallbackResponse:
+      type: object
+      properties:
+        callbackType:
+          type: string
+          description: Type of callback
+          example: "IPN"
+        customer:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Customer name
+              example: "John Doe"
+            mobileNumber:
+              type: string
+              description: Customer mobile number
+              example: "0722000000"
+            reference:
+              type: string
+              description: Customer reference
+              example: "OR28922980077"
+        transaction:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date-time
+              description: Transaction date
+              example: "2024-08-09 16:22:50"
+            reference:
+              type: string
+              description: Transaction reference
+              example: "SH90HU7FO2"
+            paymentMode:
+              type: string
+              description: Payment mode
+              example: "MPESA"
+            amount:
+              type: number
+              description: Transaction amount
+              example: 2
+            currency:
+              type: string
+              description: Transaction currency
+              example: "KES"
+            serviceCharge:
+              type: number
+              description: Service charge
+              example: 1
+            billNumber:
+              type: string
+              description: Bill number
+              example: "INVDBU"
+            servedBy:
+              type: string
+              description: Service provider
+              example: "JENGA"
+            additionalInfo:
+              type: string
+              description: Additional information
+              example: "MPESA"
+            orderAmount:
+              type: number
+              description: Order amount
+              example: 2
+            orderCurrency:
+              type: string
+              description: Order currency
+              example: "KES"
+            status:
+              type: string
+              description: Transaction status
+              example: "SUCCESS"
+            remarks:
+              type: string
+              description: Transaction remarks
+              example: "ED990222"
+        bank:
+          type: object
+          properties:
+            reference:
+              type: string
+              description: Bank reference
+              example: "NONE"
+            transactionType:
+              type: string
+              description: Transaction type
+              example: "C"
+            account:
+              type: string
+              description: Account number
+              example: "NONE"
+
+    PaymentLinkRequest:
+      type: object
+      required:
+        - customers
+        - paymentLink
+      properties:
+        customers:
+          type: array
+          items:
+            type: object
+            required:
+              - firstName
+              - lastName
+              - email
+              - countryCode
+            properties:
+              firstName:
+                type: string
+                description: First Name of the customer
+                example: "John"
+              lastName:
+                type: string
+                description: Last Name of the customer
+                example: "Doe"
+              email:
+                type: string
+                format: email
+                description: Customer Email
+                example: "johndoe902@gmail.com"
+              phoneNumber:
+                type: string
+                description: Customer phone number
+                example: "254764848636"
+              firstAddress:
+                type: string
+                description: Physical Address
+                example: ""
+              countryCode:
+                type: string
+                description: Alpha-2 country code
+                example: "KE"
+              postalOrZipCode:
+                type: string
+                description: Postal or Zip Code
+                example: "00100"
+              customerExternalRef:
+                type: string
+                description: Unique identifier for customer
+                example: "575657788779"
+        paymentLink:
+          type: object
+          required:
+            - expiryDate
+            - saleDate
+            - saleType
+            - paymentLinkType
+            - name
+            - description
+            - externalRef
+            - amountOption
+            - amount
+            - currency
+          properties:
+            expiryDate:
+              type: string
+              format: date
+              description: Link Expiry date (yyyy-MM-dd)
+              example: "2024-03-22"
+            saleDate:
+              type: string
+              format: date
+              description: Date service or product offered (yyyy-MM-dd)
+              example: "2024-02-20"
+            saleType:
+              type: string
+              enum: [SERVICE, PRODUCT]
+              description: Type of sale
+              example: "SERVICE"
+            paymentLinkType:
+              type: string
+              enum: [SINGLE, BULK]
+              description: Type of payment link
+              example: "SINGLE"
+            name:
+              type: string
+              description: Name of product or Service
+              example: "Hotel Reservation"
+            description:
+              type: string
+              description: Description of service or product
+              example: "Hotel Reservation"
+            externalRef:
+              type: string
+              description: Third Party reference
+              example: "575657788779"
+            paymentLinkRef:
+              type: string
+              description: Link reference for updating link details
+              example: ""
+            redirectURL:
+              type: string
+              format: uri
+              description: Website URL to redirect to on successful payment
+              example: "https://v3.jengahq.io"
+            amountOption:
+              type: string
+              enum: [OPEN, RESTRICTED]
+              description: Allow change amount or not
+              example: "OPEN"
+            amount:
+              type: number
+              description: Payment Link amount
+              example: 400
+            currency:
+              type: string
+              description: Payment currency
+              example: "KES"
+        notifications:
+          type: array
+          items:
+            type: string
+            enum: [EMAIL, SMS]
+          description: Modes for customer to receive payment link
+          example: ["EMAIL", "SMS"]
+
+    PaymentLinkResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Response status
+          example: true
+        code:
+          type: integer
+          description: Response code
+          example: 200
+        message:
+          type: string
+          description: Response message
+          example: "Payment link successfully generated"
+        metadata:
+          type: object
+          description: Additional metadata
+        data:
+          type: object
+          properties:
+            dateCreated:
+              type: integer
+              description: Timestamp of creation
+              example: 1709277210697
+            paymentLinkRef:
+              type: string
+              description: Payment link reference
+              example: "456175577507808"
+            externalRef:
+              type: string
+              description: External reference
+              example: "565657788779"
+            status:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Status code
+                  example: "PEND"
+                name:
+                  type: string
+                  description: Status name
+                  example: "Pending"
+
+    EazzyPayMerchant:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Merchant name
+          example: "Nakumatt"
+        tillnumber:
+          type: string
+          description: Merchant till number
+          example: "0766002221"
+        outlets:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Merchant outlet name
+                example: "Nakumatt Presitige"
+              tillnumber:
+                type: string
+                description: Merchant outlet till number
+                example: "0766002201"
+
+    EazzyPayMerchantsResponse:
+      type: object
+      properties:
+        merchants:
+          type: array
+          items:
+            $ref: '#/components/schemas/EazzyPayMerchant'
+
+    TransactionDetailsResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Response status
+          example: true
+        code:
+          type: string
+          description: Response code
+          example: "0"
+        message:
+          type: string
+          description: Response message
+          example: "Transaction details retrieved successfully"
+        data:
+          type: object
+          properties:
+            transactionId:
+              type: string
+              description: Transaction ID
+              example: "TR123456789"
+            amount:
+              type: number
+              description: Transaction amount
+              example: 1000.00
+            currency:
+              type: string
+              description: Transaction currency
+              example: "KES"
+            status:
+              type: string
+              description: Transaction status
+              example: "SUCCESS"
+            stateCode:
+              type: integer
+              description: State code
+              example: 2
+            date:
+              type: string
+              format: date-time
+              description: Transaction date
+              example: "2024-02-20T10:00:00Z"
+
+    Biller:
+      type: object
+      properties:
+        billerCode:
+          type: string
+          description: Biller code
+          example: "320320"
+        billerName:
+          type: string
+          description: Biller name
+          example: "KPLC"
+        countryCode:
+          type: string
+          description: Country code
+          example: "KE"
+        category:
+          type: string
+          description: Biller category
+          example: "UTILITY"
+
+    BillersResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Response status
+          example: true
+        code:
+          type: string
+          description: Response code
+          example: "0"
+        message:
+          type: string
+          description: Response message
+          example: "Billers retrieved successfully"
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Biller'
+
+    IMTWithinEquityRequest:
+      type: object
+      required:
+        - source
+        - sender
+        - destination
+        - transfer
+      properties:
+        source:
+          type: object
+          required:
+            - countryCode
+            - name
+            - accountNumber
+          properties:
+            countryCode:
+              type: string
+              description: The country code of the source account
+              example: "KE"
+            name:
+              type: string
+              description: The name of the source account holder
+              example: "Merchant name"
+            accountNumber:
+              type: string
+              description: The account number of the source account
+              example: "0011547896523"
+        sender:
+          type: object
+          required:
+            - name
+            - documentType
+            - documentNumber
+            - countryCode
+            - mobileNumber
+            - email
+          properties:
+            name:
+              type: string
+              description: The name of the sender
+              example: "Sender Name"
+            documentType:
+              type: string
+              description: The type of document
+              example: "NationalId"
+            documentNumber:
+              type: string
+              description: The document number of the sender
+              example: "12345"
+            countryCode:
+              type: string
+              description: The country code of the sender
+              example: "KE"
+            mobileNumber:
+              type: string
+              description: The mobile number of the sender
+              example: "0763000000"
+            email:
+              type: string
+              format: email
+              description: The email address of the sender
+              example: "sender.name@example.com"
+            address:
+              type: string
+              description: The address of the sender
+              example: "UAE"
+        destination:
+          type: object
+          required:
+            - type
+            - countryCode
+            - name
+            - bankCode
+            - accountNumber
+            - mobileNumber
+            - documentType
+            - documentNumber
+          properties:
+            type:
+              type: string
+              description: The type of destination
+              example: "bank"
+            countryCode:
+              type: string
+              description: The country code of the destination account
+              example: "KE"
+            name:
+              type: string
+              description: The name of the destination account holder
+              example: "A N.Other"
+            bankCode:
+              type: string
+              description: The bank code of the recipient's bank
+              example: "03"
+            accountNumber:
+              type: string
+              description: The account number of the recipient
+              example: "101080530003"
+            mobileNumber:
+              type: string
+              description: The mobile number of the recipient
+              example: "0763123456"
+            documentType:
+              type: string
+              description: The document type of the recipient
+              example: "NationalId"
+            documentNumber:
+              type: string
+              description: The document number of the recipient
+              example: "123456"
+            email:
+              type: string
+              format: email
+              description: The email address of the recipient
+              example: "recipient.name@example.com"
+            address:
+              type: string
+              description: The address of the recipient
+              example: "Nairobi"
+        transfer:
+          type: object
+          required:
+            - type
+            - amount
+            - currencyCode
+            - reference
+            - date
+          properties:
+            type:
+              type: string
+              description: The type of transfer
+              example: "InternalFundsTransfer"
+            amount:
+              type: string
+              description: The amount to be transferred
+              example: "1000"
+            currencyCode:
+              type: string
+              description: The currency code
+              example: "KES"
+            reference:
+              type: string
+              description: The reference number for the transfer
+              example: "123456789012"
+            date:
+              type: string
+              format: date
+              description: The date of the transfer
+              example: "2018-08-18"
+            description:
+              type: string
+              description: A description of the transfer
+              example: "some remarks here"
+
+    IMTWithinEquityResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+          description: Response status
+          example: true
+        code:
+          type: integer
+          description: Response code
+          example: 0
+        message:
+          type: string
+          description: Response message
+          example: "success"
+        data:
+          type: object
+          properties:
+            transactionId:
+              type: string
+              description: Unique transaction ID
+              example: ""
+            status:
+              type: string
+              description: Transaction status
+              example: "SUCCESS"
+
+paths:
+  /authentication/api/v3/authenticate/merchant:
+    post:
+      summary: Authenticate merchant
+      description: Authenticate a merchant and get an access token
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api-checkout/mpesa-stk-push/v3.0/status/order/{reference}:
+    get:
+      summary: Query M-Pesa STK Push Order Status
+      description: Check the status of an M-Pesa STK push transaction
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Order reference number
+      responses:
+        '200':
+          description: Order status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MPesaStkPushResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/transaction-api/v3.0/bills/pay:
+    post:
+      summary: Initiate bill payment
+      description: Provides partners the capability to initiate utility bill payments for goods and services
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillPaymentRequest'
+      responses:
+        '200':
+          description: Bill payment processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillPaymentResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/transaction-api/v3.0/bills/validation:
+    post:
+      summary: Validate bill
+      description: Enables your application to perform a bill validation before making a payment
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillValidationRequest'
+      responses:
+        '200':
+          description: Bill validation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillValidationResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/payment-api/v3.0/stkussdpush/initiate:
+    post:
+      summary: Initiate Equitel STK/USSD Push
+      description: |
+        Initiates STK or USSD pushes to Telco MNOs for payment transactions via Equitel.
+        STK Push allows a customer to select an account to debit from whereas for USSD Push it debits the primary account of the customer.
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EquitelPushRequest'
+      responses:
+        '200':
+          description: Transaction initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EquitelPushResponse'
+        '400':
+          description: Invalid request or duplicate transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authorized to access this Telco
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api-checkout/mpesa-stk-push/v3.0/init:
+    post:
+      summary: Initiate M-Pesa STK Push
+      description: |
+        Initiates M-Pesa STK push for payment transactions.
+        Supports both wallet-based and account-based settlement.
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MPesaStkPushRequest'
+      responses:
+        '200':
+          description: Transaction initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MPesaStkPushResponse'
+        '401':
+          description: Not authorized to access this Telco
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api-checkout/api/v1/create/payment-link:
+    post:
+      summary: Create Payment Link
+      description: |
+        Creates a payment link that can be sent to customers via SMS or email.
+        Supports both single and bulk payment links.
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentLinkRequest'
+      responses:
+        '200':
+          description: Payment link created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentLinkResponse'
+        '400':
+          description: Invalid request or payment already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/transaction-api/v3.0/merchants:
+    get:
+      summary: Get All EazzyPay Merchants
+      description: Returns a list of all EazzyPay merchants and their outlets
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+          description: Number of results per page
+        - name: page
+          in: query
+          schema:
+            type: integer
+          description: Page number
+      responses:
+        '200':
+          description: Merchants retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EazzyPayMerchantsResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/transaction-api/v3.0/transaction/{transactionId}:
+    get:
+      summary: Get Transaction Details
+      description: Retrieves details of a specific transaction
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Transaction ID
+      responses:
+        '200':
+          description: Transaction details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetailsResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/transaction-api/v3.0/billers:
+    get:
+      summary: Get All Billers
+      description: Returns a list of all available billers
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Billers retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillersResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v3-apis/transaction-api/v3.0/remittance/internalBankTransfer/imt:
+    post:
+      summary: IMT Within Equity Bank
+      description: |
+        Move funds within Equity Bank across Kenya, Uganda, Tanzania, Rwanda & South Sudan.
+        Supports internal money transfers between Equity Bank accounts.
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+        - SignatureAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IMTWithinEquityRequest'
+      responses:
+        '200':
+          description: Transfer initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IMTWithinEquityResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
