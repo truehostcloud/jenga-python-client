@@ -1,6 +1,6 @@
 {
     "packageName": "jenga_client",
-    "projectName": "jenga-python-client",
+    "projectName": "jenga-api-client",
     "packageVersion": "1.0.0",
     "packageUrl": "https://github.com/truehostcloud/jenga-python-client",
     "packageCompany": "Truehost",
