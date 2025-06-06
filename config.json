@@ -1,0 +1,13 @@
+{
+    "packageName": "jenga_client",
+    "projectName": "jenga-python-client",
+    "packageVersion": "1.0.0",
+    "packageUrl": "https://github.com/truehostcloud/jenga-python-client",
+    "packageCompany": "Truehost",
+    "packageAuthor": "Peter Thua",
+    "packageEmail": "peter.m@cloudoon.com",
+    "packageDescription": "Python client for Jenga API",
+    "generateSourceCodeOnly": false,
+    "packageKeywords": ["jenga", "api", "client", "payment", "banking","Equity"],
+    "skipFormModel": false
+} 
