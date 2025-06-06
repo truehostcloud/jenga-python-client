@@ -5,7 +5,7 @@ description = "Jenga API"
 authors = ["OpenAPI Generator Community <team@openapitools.org>"]
 license = "NoLicense"
 readme = "README.md"
-repository = "https://github.com/truehostcloud/jenga-python-client"
+repository = "https://github.com/GIT_USER_ID/GIT_REPO_ID"
 keywords = ["OpenAPI", "OpenAPI-Generator", "Jenga API"]
 include = ["jenga_client/py.typed"]
 
